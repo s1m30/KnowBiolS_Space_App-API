@@ -163,26 +163,29 @@ async def get_graph(limit: int = 50):
         # authors
         for a in record["authors"]:
             if a:
-                if a["id"] not in node_set:
-                    nodes.append({"id": a["id"], "name": a["name"], "group": 2})
-                    node_set.add(a["id"])
-                links.append({"source": pub_id, "target": a["id"], "value": 1})
+                a_id = a.get("id") or a.get("name")
+                if a_id not in node_set:
+                    nodes.append({"id": a_id, "name": a.get("name"), "group": 2})
+                    node_set.add(a_id)
+                links.append({"source": pub_id, "target": a_id, "value": 1})
 
         # mesh terms
         for m in record["concepts"]:
             if m:
-                if m["id"] not in node_set:
-                    nodes.append({"id": m["id"], "name": m["name"], "group": 3})
-                    node_set.add(m["id"])
-                links.append({"source": pub_id, "target": m["id"], "value": 2})
+                m_id = m.get("id") or m.get("term")
+                if m_id not in node_set:
+                    nodes.append({"id": m_id, "name": m.get("term"), "group": 3})
+                    node_set.add(m_id)
+                links.append({"source": pub_id, "target": m_id, "value": 2})
 
         # chemicals
         for c in record["chemicals"]:
             if c:
-                if c["id"] not in node_set:
-                    nodes.append({"id": c["id"], "name": c["name"], "group": 4})
-                    node_set.add(c["id"])
-                links.append({"source": pub_id, "target": c["id"], "value": 2})
+                c_id = c.get("id") or c.get("name")
+                if c_id not in node_set:
+                    nodes.append({"id": c_id, "name": c.get("name"), "group": 4})
+                    node_set.add(c_id)
+                links.append({"source": pub_id, "target": c_id, "value": 2})
 
     session.close()
     return {"nodes": nodes, "links": links}
