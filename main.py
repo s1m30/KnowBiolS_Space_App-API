@@ -67,6 +67,7 @@ origins = [
     # Replace this with the actual URL of your React frontend in production.
     "http://localhost:8080",  
     "http://127.0.0.1:8080",
+    "https://know-biol-s-space-app.vercel.app",
     # You can add more origins here if needed
 ]
 
