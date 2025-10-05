@@ -200,7 +200,7 @@ def summarize_publication(title: str, abstract: str):
     try:
         llm = init_chat_model("google_genai:gemini-2.5-flash", temperature=0.7)
         result= llm.invoke(summary_prompt)
-        return result
+        return result.content
     except Exception as e:
         raise e
         
