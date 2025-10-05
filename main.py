@@ -8,6 +8,8 @@ from typing import List, Optional
 import sqlite3
 import json
 from neo4j import GraphDatabase
+from langchain.chat_models import init_chat_model
+
 from dotenv import load_dotenv
 import os 
 # --- 1. Data Models (using Pydantic) ---
@@ -171,6 +173,20 @@ def get_graph(limit: int = 50):
             "nodes": list(nodes.values()),
             "links": links,
         }
+ 
+
+@app.post("/summarize")
+def summarize_publication(title: str, abstract: str):
+    summary_prompt = f"""The below is an abstract of a publication, I need you to not only summarize it for a reader.
+    \\n #Title: \n{title} \\n #Abstract: \n{abstract}"""
+    
+    # Generate the summary through the predefined llm
+    try:
+        llm = init_chat_model("google_genai:gemini-2.5-flash", temperature=0.7)
+        result= llm.invoke(summary_prompt)
+        return result
+    except Exception as e:
+        raise e
         
 # --- 5. Application Run Command ---
 if __name__ == "__main__":
