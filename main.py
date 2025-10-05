@@ -127,69 +127,51 @@ def search_publications(query: str = Query(..., min_length=2)):
 
 
 @app.get("/graph")
-async def get_graph(limit: int = 50):
-    session = driver.session()
+def get_graph(limit: int = 50):
+    with driver.session() as session:
+        result = session.run(
+            """
+            MATCH (p:Publication)
+            OPTIONAL MATCH (p)-[:HAS_CONCEPT]->(m:Concepts)
+            OPTIONAL MATCH (p)-[:HAS_CHEMICAL]->(c:Chemical)
+            OPTIONAL MATCH (p)<-[:AUTHORED]-(a:Author)
+            WITH p, collect(DISTINCT m) AS mesh, collect(DISTINCT c) AS chems, collect(DISTINCT a) AS authors
+            RETURN 
+              p {
+                .id, .title, .pubYear, .doi, .abstract,
+                mesh: [x IN mesh | {id: x.term, name: x.term, group: 3}],
+                chems: [x IN chems | {id: x.name, name: x.name, group: 4}],
+                authors: [x IN authors | {id: x.name, name: x.name}]
+              }
+            LIMIT $limit
+            """,
+            {"limit": limit}
+        )
 
-    query = """
-      MATCH (p:Publication)
-      OPTIONAL MATCH (p)-[:AUTHORED]->(a:Author)
-      OPTIONAL MATCH (p)-[:HAS_Concept]->(m:Concepts)
-      OPTIONAL MATCH (p)-[:HAS_CHEMICAL]->(c:Chemical)
-      RETURN p, collect(distinct a) as authors, 
-             collect(distinct m) as concepts, 
-             collect(distinct c) as chemicals
-      LIMIT $limit
-    """
+        nodes = {}
+        links = []
 
-    result = session.run(query, limit=limit)
+        for record in result:
+            pub = record["p"]
 
-    nodes = []
-    links = []
-    node_set = set()
+            # store publication metadata only in side panel
+            pub_id = f"pub:{pub['id']}"
 
-    for record in result:
-        pub = record["p"]
-        pub_id = pub["id"]
+            for m in pub["mesh"]:
+                mid = f"mesh:{m['id']}"
+                nodes[mid] = m
+                links.append({"source": mid, "target": pub_id})
 
-        # publication node
-        if pub_id not in node_set:
-            nodes.append({
-                "id": pub_id,
-                "name": pub.get("title", "Untitled"),
-                "group": 1
-            })
-            node_set.add(pub_id)
+            for c in pub["chems"]:
+                cid = f"chem:{c['id']}"
+                nodes[cid] = c
+                links.append({"source": cid, "target": pub_id})
 
-        # authors
-        for a in record["authors"]:
-            if a:
-                a_id = a.get("id") or a.get("name")
-                if a_id not in node_set:
-                    nodes.append({"id": a_id, "name": a.get("name"), "group": 2})
-                    node_set.add(a_id)
-                links.append({"source": pub_id, "target": a_id, "value": 1})
-
-        # mesh terms
-        for m in record["concepts"]:
-            if m:
-                m_id = m.get("id") or m.get("term")
-                if m_id not in node_set:
-                    nodes.append({"id": m_id, "name": m.get("term"), "group": 3})
-                    node_set.add(m_id)
-                links.append({"source": pub_id, "target": m_id, "value": 2})
-
-        # chemicals
-        for c in record["chemicals"]:
-            if c:
-                c_id = c.get("id") or c.get("name")
-                if c_id not in node_set:
-                    nodes.append({"id": c_id, "name": c.get("name"), "group": 4})
-                    node_set.add(c_id)
-                links.append({"source": pub_id, "target": c_id, "value": 2})
-
-    session.close()
-    return {"nodes": nodes, "links": links}
-
+        return {
+            "nodes": list(nodes.values()),
+            "links": links,
+        }
+        
 # --- 5. Application Run Command ---
 if __name__ == "__main__":
     # This command starts the Uvicorn server, which hosts the FastAPI application.
