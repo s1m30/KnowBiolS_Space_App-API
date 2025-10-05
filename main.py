@@ -82,7 +82,23 @@ app.add_middleware(
 )
 
 
-
+@app.get("/publications/count")
+def get_publications_count():
+    """Return the total number of publications in the database."""
+    conn = get_db_connection()
+    try:
+        # Execute the SQL COUNT function, which returns a single row with the total count.
+        cursor = conn.execute("SELECT COUNT(*) FROM embeddings_queue")
+        total_count = cursor.fetchone()[0]
+        return {"count": total_count}
+    except Exception as e:
+        print(f"Database error during count: {e}")
+        # Return 0 or handle error gracefully if needed
+        return {"count": 0}
+    finally:
+        conn.close()
+        
+        
 @app.get("/publications")
 def get_publications(skip: int = 0, limit: int = 20):
     """Return a paginated list of publications"""
